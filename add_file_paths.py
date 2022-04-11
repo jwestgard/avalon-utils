@@ -18,17 +18,17 @@ def find_umdm(other_identifier_columns, row):
             return row[i]
 
 
-def insert_next_file(header, row, start, filename, pid, path):
+def insert_next_file(header, row, n, start, filename, pid, path):
     """
     Find the next column with a "File" header that occurs after the column
     numbered start. Add the path and pid to the appropriate columns of the row,
     and return the column number of the "File" column just updated.
     """
     i = header.index("File", start)
-    print(f"{row[i]} => {filename}", file=sys.stderr)
+    print(f"Updating row {n}, col {i}: {row[i]} => {path}", file=sys.stderr)
     row[i] = path
     row[i+1] = pid
-    return i
+    return i + 1
 
 
 try:
@@ -69,21 +69,23 @@ other_identifier_columns = [i for i, h in enumerate(header) if h == 'Other Ident
 # write the output CSV to STDOUT
 writer = csv.writer(sys.stdout)
 writer.writerow(header)
-for n, row in enumerate(reader, 1):
+# process each row, enumerating from 2 to account for the header row
+for n, row in enumerate(reader, 2):
 
-    # Set access note field
+    # Set access note field (temporarily using "general" note type pending vocab update)
     if row[header.index('Terms of Use')] == CAMPUSFLAG:
-        row.extend(['access', 'campus-only'])
+        row.extend(['general', 'campus-only'])
     else:
-        row.extend(['access', 'public'])
+        row.extend(['general', 'public'])
 
     # Lookup files using UMDM PID and populate columns
     umdm = find_umdm(other_identifier_columns, row)
     if not umdm:
         sys.exit(f"Could not locate UMDM identifier for row {n}")
     files = results[umdm]
+    files.sort()
     start = 0
-    for filename, pid, path in sorted(files):
-        start = insert_next_file(header, row, start, filename, pid, path)
+    for filename, pid, path in files:
+        start = insert_next_file(header, row, n, start, filename, pid, path)
 
     writer.writerow(row)
