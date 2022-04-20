@@ -22,16 +22,18 @@ class PathExtPair(click.ParamType):
 
 @click.command
 @click.option('-D', '--directory', 'directories', type=PathExtPair(), multiple=True)
-def rename_files(directories):
+@click.option('--root', default='.')
+def rename_files(directories, root):
     reader = DictReader(sys.stdin)
+    root_dir = Path(root)
 
     for row in reader:
         old_name_base = row['old_name_base']
         new_name_base = row['new_name_base']
         if old_name_base and new_name_base:
             for directory, extension in directories:
-                old_file = Path(directory) / (old_name_base + extension)
-                new_file = Path(directory) / (new_name_base + extension)
+                old_file = root_dir / directory / (old_name_base + extension)
+                new_file = root_dir / directory / (new_name_base + extension)
                 print(old_file, new_file)
                 if old_file.is_file():
                     rename(old_file, new_file)
