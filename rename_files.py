@@ -34,9 +34,11 @@ def rename_files(directories, root):
             for directory, extension in directories:
                 old_file = root_dir / directory / (old_name_base + extension)
                 new_file = root_dir / directory / (new_name_base + extension)
-                print(old_file, new_file)
                 if old_file.is_file():
                     rename(old_file, new_file)
+                    print('Renamed', old_file, new_file)
+                else:
+                    print('Skipped', old_file, new_file)
             print()
 
 
