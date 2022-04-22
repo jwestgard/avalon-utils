@@ -11,7 +11,8 @@ from collections import defaultdict
 results = defaultdict(list)
 
 
-with open('config.yaml') as handle:
+config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
+with open(config_path) as handle:
     config = yaml.safe_load(handle)
 
 
@@ -30,7 +31,7 @@ def insert_next_file(header, row, n, start, pid, path):
     i = header.index("File", start)
     print(f"Updating row {n}, col {i}: {row[i]} => {path}", file=sys.stderr)
     row[i] = path
-    row[i+1] = os.path.basename(path)
+    row[i+1] = os.path.splitext(os.path.basename(path))[0]
     return i + 1
 
 
