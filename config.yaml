@@ -1,0 +1,5 @@
+access_campus: "Access condition: campus-only."
+access_public: "Access condition: public."
+campus_flag:   "Access is restricted to patrons at the University of Maryland."
+offset:        "00:01:00.000"
+path_pattern:  ^.+?/(umd_\d+)/(umd_\d+)/(.*)$
