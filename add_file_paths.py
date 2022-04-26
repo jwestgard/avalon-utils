@@ -12,8 +12,8 @@ results = defaultdict(list)
 
 
 config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
-with open(config_path) as handle:
-    config = yaml.safe_load(handle)
+with open(config_path) as config_file:
+    config = yaml.safe_load(config_file)
 
 
 def find_umdm(other_identifier_columns, row):
@@ -37,8 +37,8 @@ def insert_next_file(header, row, n, start, pid, path):
 
 def add_file_paths():
     try:
-        with open(sys.argv[1]) as handle:
-            data = [row.strip() for row in handle.readlines()]
+        with open(sys.argv[1]) as input_file:
+            data = [row.strip() for row in input_file.readlines()]
     except IndexError:
         print(
             'Usage: add_file_paths.py <file_list.txt>\n'
