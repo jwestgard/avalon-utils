@@ -1,5 +1,13 @@
 access_campus: "Access condition: campus-only."
 access_public: "Access condition: public."
 campus_flag:   "Access is restricted to patrons at the University of Maryland."
+id_mappings:
+    - pattern: umd:\d{5}\d* 
+      label:   "fedora2"
+    - pattern: hdl:.+ 
+      label:   "handle"
+    - pattern: (bcast|histmss|labor|litmss|lms|ntl|prange|scpa|univarch).+ 
+      label:   "filename"
 offset:        "00:01:00.000"
 path_pattern:  ^.*(umd_\d+)/(umd_\d+)/(.*)$
+path_prefix:   "f2migration"
