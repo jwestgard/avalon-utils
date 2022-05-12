@@ -29,7 +29,7 @@ def insert_next_file(header, row, n, start, pid, path):
     and return the column number of the "File" column just updated.
     """
     i = header.index("File", start)
-    print(f" Updating row {n}, col {i}: {row[i]} => {path}", file=sys.stderr)
+    print(f"  Updating row {n}, col {i}: {row[i]} => {path}", file=sys.stderr)
     row[i] = path
     row[i+1] = os.path.splitext(os.path.basename(path))[0]
     return i + 1
@@ -107,8 +107,11 @@ def add_file_paths():
                 #print(pattern, label, id)
                 if re.match(pattern, id):
                     row[column - 1] = label
-                    # print(f"  Match! '{id}' is a {label} ID", file=sys.stderr)
-
+                    print(f"  Match! '{id}' is a {label} ID", file=sys.stderr)
+        
+        all_id_labels = [row[column - 1] for column in other_identifier_columns]
+        if not "filename" in all_id_labels:
+            next_id_col = other_identifier_columns[all_id_labels.index('')]
 
         start = 0
         for filename, pid, path, bytes in files:
@@ -119,7 +122,15 @@ def add_file_paths():
         all_filenames = [
             filename[:-4] for (filename, pid, path, bytes) in files
             ]
-        print(f" All Files: {all_filenames}", file=sys.stderr)
+        print(f"  All Files: {all_filenames}", file=sys.stderr)
+        all_basenames = [
+            '-'.join(filename.split('-')[:2]) for filename in all_filenames
+            ]
+        print(f"  All Basenames: {all_basenames}", file=sys.stderr)
+        if len(all_filenames) == 1:
+            row[next_id_col - 1] = "filename"
+            row[next_id_col] = all_basenames[0]
+        
         items_added += 1
         writer.writerow(row)
 
