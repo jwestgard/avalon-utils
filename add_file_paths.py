@@ -127,7 +127,7 @@ def add_file_paths():
             '-'.join(filename.split('-')[:2]) for filename in all_filenames
             ]
         print(f"  All Basenames: {all_basenames}", file=sys.stderr)
-        if len(all_filenames) == 1:
+        if len(all_filenames) == 1 or len(set(all_basenames)) == 1:
             row[next_id_col - 1] = "filename"
             row[next_id_col] = all_basenames[0]
         
