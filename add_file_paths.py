@@ -110,8 +110,9 @@ def add_file_paths():
                     print(f"  Match! '{id}' is a {label} ID", file=sys.stderr)
         
         all_id_labels = [row[column - 1] for column in other_identifier_columns]
-        next_id_col = other_identifier_columns[all_id_labels.index('')]
-
+        empty_id_columns = [other_identifier_columns[n] for n, label in \
+                            enumerate(all_id_labels) if label == ""]
+ 
         start = 0
         for filename, pid, path, bytes in files:
             start = insert_next_file(header, row, n, start, pid, path)
@@ -127,10 +128,18 @@ def add_file_paths():
             ])
         print(f"  All Basenames: {all_basenames}", file=sys.stderr)
         
+        # Try to add filename identifier column if it doesn't exist
         if not "filename" in all_id_labels:
-            if len(all_filenames) == 1 or len(all_basenames) == 1:
-                row[next_id_col - 1] = "filename"
-                row[next_id_col] = all_basenames.pop()
+            if len(all_basenames) == 1 and "" not in all_basenames:
+                i = other_identifier_columns[all_id_labels.index('')]
+                row[i - 1] = "filename"
+                row[i] = all_basenames.pop()
+            elif (0 < len(all_filenames) <= len(empty_id_columns)):
+                for filename, i in zip(all_filenames, empty_id_columns):
+                    row[i - 1] = "filename"
+                    row[i] = filename
+            else:
+                print(f"  Could not add filename ID column", file=sys.stderr)
         
         items_added += 1
         writer.writerow(row)
