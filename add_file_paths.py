@@ -110,8 +110,7 @@ def add_file_paths():
                     print(f"  Match! '{id}' is a {label} ID", file=sys.stderr)
         
         all_id_labels = [row[column - 1] for column in other_identifier_columns]
-        if not "filename" in all_id_labels:
-            next_id_col = other_identifier_columns[all_id_labels.index('')]
+        next_id_col = other_identifier_columns[all_id_labels.index('')]
 
         start = 0
         for filename, pid, path, bytes in files:
@@ -123,13 +122,15 @@ def add_file_paths():
             filename[:-4] for (filename, pid, path, bytes) in files
             ]
         print(f"  All Files: {all_filenames}", file=sys.stderr)
-        all_basenames = [
-            '-'.join(filename.split('-')[:2]) for filename in all_filenames
-            ]
+        all_basenames = set([
+            '-'.join(filename.split('-')[:-1]) for filename in all_filenames
+            ])
         print(f"  All Basenames: {all_basenames}", file=sys.stderr)
-        if len(all_filenames) == 1 or len(set(all_basenames)) == 1:
-            row[next_id_col - 1] = "filename"
-            row[next_id_col] = all_basenames[0]
+        
+        if not "filename" in all_id_labels:
+            if len(all_filenames) == 1 or len(all_basenames) == 1:
+                row[next_id_col - 1] = "filename"
+                row[next_id_col] = all_basenames.pop()
         
         items_added += 1
         writer.writerow(row)
