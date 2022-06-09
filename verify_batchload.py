@@ -64,45 +64,45 @@ class AvalonMediaObject:
 
 def main():
 
+    av_index = {}
+    inputcsv = BatchCsv(sys.argv[1])
+
     print(f"\n {'*' * 34}")
     print(f" | Avalon Batch Verification Tool |")
     print(f" {'*' * 34}\n")
-    lookup = {}
-    inputcsv = BatchCsv(sys.argv[1])
     print(f"Input CSV: {inputcsv.basename}")
     print(f" Is file?: {inputcsv.is_file()}")
     print(f"    Title: '{inputcsv.title}'")
     print(f"    Email: '{inputcsv.email}'")
     print(f" Num Rows: {len(inputcsv.rows)}")    
-    result = requests.get(SOLR_QUERY)
 
+    result = requests.get(SOLR_QUERY)
     if result.status_code == 200:
         jsonresponse = result.json()
     else:
         sys.exit(f"Could not get Solr data")
 
-    response_length = len(jsonresponse['response']['docs'])
-    print(f"Solr recs: {response_length}")
-    for item in jsonresponse['response']['docs']:
+    docs = jsonresponse['response']['docs']
+    print(f"Solr recs: {len(docs)}")
+    for item in docs:
         obj = AvalonMediaObject(item)
-        pid = obj.pid
-        if len(pid) > 0:
-            lookup.setdefault(pid, []).append(obj)
-    print(f" Num PIDs: {len(lookup)}\n")
+        if obj.pid != "":
+            av_index.setdefault(obj.pid, []).append(obj)
+        else:
+            continue
+    print(f" Num PIDs: {len(av_index)}\n")
 
     print(f"Analyzing CSV Data...")
     for rownum, row in enumerate(inputcsv.rows, 1):
         for colnum, (label, value) in enumerate(row):
             if value == "fedora2":
                 pid = row[colnum + 1][1]
-            if pid in lookup:
-                mediaobjects = lookup[pid]
-            else:
-                mediaobjects = []
-            num_matches = len(mediaobjects)
-            urls = ";".join(
-                [f"{i.url} ({i.num_parts})" for i in mediaobjects]
-                )
+        if pid and pid in av_index:
+            mediaobjects = av_index[pid]
+        else:
+            mediaobjects = []
+        num_matches = len(mediaobjects)
+        urls = ";".join([f"{i.url} ({i.num_parts})" for i in mediaobjects])
         print(f"{rownum:4}. {pid} => {num_matches} {urls}")
 
 
