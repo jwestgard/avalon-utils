@@ -14,7 +14,9 @@ class BatchCsv:
     """Class representing an Avalon-style batch CSV with extra header row"""
     def __init__(self, filepath):
         self.path = Path(filepath)
-        self.basename = self.path.name
+        self.filename = self.path.name
+        self.basename = self.path.stem
+        self.ext = self.path.suffix
         if self.path.is_file():
             self.read()
         else:
@@ -23,9 +25,9 @@ class BatchCsv:
     def read(self):
         with open(self.path) as handle:
             self.title, self.email = handle.readline().strip().split(',')
-            fieldnames = handle.readline().strip().split(',')
+            self.fieldnames = handle.readline().strip().split(',')
             reader = csv.reader(handle.readlines())
-            self.rows = [list(zip(fieldnames, row)) for row in reader]
+            self.rows = [list(zip(self.fieldnames, row)) for row in reader]
 
     def is_file(self):
         return self.path.is_file()
@@ -64,46 +66,88 @@ class AvalonMediaObject:
 
 def main():
 
-    av_index = {}
-    inputcsv = BatchCsv(sys.argv[1])
-
     print(f"\n {'*' * 34}")
     print(f" | Avalon Batch Verification Tool |")
     print(f" {'*' * 34}\n")
-    print(f"Input CSV: {inputcsv.basename}")
-    print(f" Is file?: {inputcsv.is_file()}")
-    print(f"    Title: '{inputcsv.title}'")
-    print(f"    Email: '{inputcsv.email}'")
-    print(f" Num Rows: {len(inputcsv.rows)}")    
+    
+    """ Query Solr and create index of Media Objects that can be looked up by PID """
+    av_index = {}
 
+    print("   Querying Solr index and creating Media Object lookup dictionary...")
     result = requests.get(SOLR_QUERY)
+
     if result.status_code == 200:
         jsonresponse = result.json()
     else:
-        sys.exit(f"Could not get Solr data")
+        sys.exit(f" => Could not get Solr data!")
 
     docs = jsonresponse['response']['docs']
-    print(f"Solr recs: {len(docs)}")
+    print(f"\n  Solr records: {len(docs)}")
     for item in docs:
         obj = AvalonMediaObject(item)
         if obj.pid != "":
             av_index.setdefault(obj.pid, []).append(obj)
         else:
             continue
-    print(f" Num PIDs: {len(av_index)}\n")
 
-    print(f"Analyzing CSV Data...")
-    for rownum, row in enumerate(inputcsv.rows, 1):
-        for colnum, (label, value) in enumerate(row):
-            if value == "fedora2":
-                pid = row[colnum + 1][1]
-        if pid and pid in av_index:
-            mediaobjects = av_index[pid]
-        else:
-            mediaobjects = []
-        num_matches = len(mediaobjects)
-        urls = ";".join([f"{i.url} ({i.num_parts})" for i in mediaobjects])
-        print(f"{rownum:4}. {pid} => {num_matches} {urls}")
+    print(f"   Unique PIDs: {len(av_index)}")
+    print(f"\n   {'=' * 80}\n")
+
+    """ Process each input CSV, writing results to cleanup CSV files """
+    outputdir = sys.argv[1]
+    missingmedia_file = Path(outputdir) / "missingmedia.csv"
+    duplicates_file = Path(outputdir) / "duplicates.csv"
+    if missingmedia_file.exists():
+        missingmedia = open(missingmedia_file, 'a')
+    else:
+        missingmedia = open(missingmedia_file, 'w')
+
+    if duplicates_file.exists():
+        duplicates = open(duplicates_file, 'a')
+    else:
+        duplicates = open(duplicates_file, 'w')
+
+    for n, inputfile in enumerate(sys.argv[2:], 1):
+        inputcsv = BatchCsv(inputfile)
+        print(f"   File #{n}: {inputcsv.filename}\n")
+        print(f"    Input filename: {inputcsv.filename}")
+        print(f"    Input basename: {inputcsv.basename}")
+        print(f"   Input extension: {inputcsv.ext}")
+        print(f"          Is file?: {inputcsv.is_file()}")
+        print(f"             Title: '{inputcsv.title}'")
+        print(f"             Email: '{inputcsv.email}'")
+        print(f"          Num Rows: {len(inputcsv.rows)}\n")
+
+        reloads = []
+
+        for rownum, row in enumerate(inputcsv.rows, 1):
+            for colnum, (label, value) in enumerate(row):
+                if value == "fedora2":
+                    pid = row[colnum + 1][1]
+            if pid and pid in av_index:
+                mediaobjects = av_index[pid]
+            else:
+                mediaobjects = []
+            num_matches = len(mediaobjects)
+            urls = ";".join([f"{i.url} ({i.num_parts})" for i in mediaobjects])
+            print(f"{rownum:6}. {pid} => {num_matches} {urls}")
+
+            if num_matches > 1:
+                duplicates.write(f"{pid},{','.join([i.url for i in mediaobjects])}\n")
+            elif num_matches == 1 and mediaobjects[0].num_parts == 0:
+                missingmedia.write(f"{pid},{','.join([i.url for i in mediaobjects])}\n")
+            elif num_matches == 0:
+                reloads.append([value for (column, value) in row])
+
+        if reloads:
+            reloadcsv = Path(outputdir) / f"{inputcsv.basename}.reload.csv"
+            reloadwriter = csv.writer(open(reloadcsv, 'w'))
+            reloadwriter.writerow([inputcsv.title + ' RELOAD', inputcsv.email])
+            reloadwriter.writerow(inputcsv.fieldnames)
+            for row in reloads:
+                reloadwriter.writerow(row)
+
+        print(f"\n   {'=' * 80}\n")
 
 
 if __name__ == "__main__":
