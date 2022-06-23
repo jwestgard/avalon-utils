@@ -62,7 +62,10 @@ class AvalonMediaObject:
             self.num_parts = len(self.section_id_ssim)
         else:
             self.num_parts = 0
-        
+
+    def is_private(self):
+        return "Access condition: campus-only." in self.mods_tesim 
+
 
 def main():
 
@@ -107,6 +110,12 @@ def main():
     else:
         duplicates = open(duplicates_file, 'w')
 
+    total_objects_count = 0
+    public_objects_count = 0
+    campus_objects_count = 0
+    expected_files_count = 0
+    loaded_files_count = 0
+
     for n, inputfile in enumerate(sys.argv[2:], 1):
         inputcsv = BatchCsv(inputfile)
         print(f"   File #{n}: {inputcsv.filename}\n")
@@ -121,17 +130,38 @@ def main():
         reloads = []
 
         for rownum, row in enumerate(inputcsv.rows, 1):
+            #print(row)
+            total_objects_count += 1
             for colnum, (label, value) in enumerate(row):
+                if label == "File" and value != "":
+                    expected_files_count += 1
                 if value == "fedora2":
                     pid = row[colnum + 1][1]
+                if value == "access":
+                    if row[colnum + 1][1] == "Access condition: campus-only.":
+                        access_rule = "campus"
+                        campus_objects_count += 1
+                    elif row[colnum + 1][1] == "Access condition: public.":
+                        access_rule = "public"
+                        public_objects_count += 1
+                    else:
+                        access_rule = None
+
+
             if pid and pid in av_index:
                 mediaobjects = av_index[pid]
             else:
                 mediaobjects = []
+
             num_matches = len(mediaobjects)
             urls = ";".join([f"{i.url} ({i.num_parts})" for i in mediaobjects])
-            print(f"{rownum:6}. {pid} => {num_matches} {urls}")
+            print(f"{rownum:6}. {pid} ({access_rule}) => {num_matches} {urls}")
 
+            # add the number of files on the first matching media object, ignoring dupes
+            if num_matches > 0:
+                loaded_files_count += mediaobjects[0].num_parts
+
+            # add records to the duplicates and missing media containers
             if num_matches > 1:
                 duplicates.write(f"{pid},{','.join([i.url for i in mediaobjects])}\n")
             elif num_matches == 1 and mediaobjects[0].num_parts == 0:
@@ -149,6 +179,13 @@ def main():
 
         print(f"\n   {'=' * 80}\n")
 
+    print(f"    Batch Summary")
+    print(f"    -------------")
+    print(f"         Public count: {public_objects_count:4}")
+    print(f"    Campus-only count: {campus_objects_count:4}")
+    print(f"        Objects count: {total_objects_count:4}")
+    print(f" Expected Files count: {expected_files_count:4}")
+    print(f"   Loaded Files count: {loaded_files_count:4}\n")
 
 if __name__ == "__main__":
     main()
